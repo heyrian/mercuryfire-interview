@@ -2,9 +2,18 @@
   <q-page class="row q-pt-xl">
     <div class="full-width q-px-xl">
       <div class="q-mb-xl">
-        <q-input v-model="tempData.name" label="姓名" />
-        <q-input v-model="tempData.age" label="年齡" />
-        <q-btn color="primary" class="q-mt-md">新增</q-btn>
+        <q-input v-model="tempData.name" label="姓名" :rules="nameRules" />
+        <q-input v-model="tempData.age" label="年齡" :rules="ageRules" />
+        <q-btn
+          v-if="mode === 'create'"
+          color="primary"
+          class="q-mt-md"
+          @click="handleCreateUser"
+          >新增</q-btn
+        >
+        <q-btn v-else color="primary" class="q-mt-md" @click="handleEditUser"
+          >編輯</q-btn
+        >
       </div>
 
       <q-table
@@ -78,19 +87,28 @@
 </template>
 
 <script setup lang="ts">
-import axios from 'axios';
-import { QTableProps } from 'quasar';
-import { ref } from 'vue';
+import { api } from 'boot/axios';
+import { QTableProps, useQuasar } from 'quasar';
+import { onMounted, ref } from 'vue';
+
 interface btnType {
   label: string;
   icon: string;
   status: string;
 }
-const blockData = ref([
-  {
-    name: 'test',
-    age: 25,
-  },
+
+interface user {
+  id?: string;
+  name: string;
+  age: number;
+}
+const $q = useQuasar();
+const mode = ref('create');
+const blockData = ref([]);
+const nameRules = ref([(val: string) => (val && val.length > 0) || '請勿空白']);
+const ageRules = ref([
+  (val: string) => /^[1-9]\d*$/.test(val) || '請輸入正整數',
+  (val: string) => (val !== null && val !== '') || '請勿空白',
 ]);
 const tableConfig = ref([
   {
@@ -120,12 +138,73 @@ const tableButtons = ref([
 ]);
 
 const tempData = ref({
+  id: '',
   name: '',
   age: '',
 });
-function handleClickOption(btn, data) {
-  // ...
+
+async function loadData() {
+  const res = await api.get('api/CRUDTest/a');
+  blockData.value = res.data;
+  mode.value = 'create';
+  tempData.value = {
+    id: '',
+    name: '',
+    age: '',
+  };
 }
+
+async function handleCreateUser() {
+  await api.post('api/CRUDTest', tempData.value);
+  loadData();
+}
+
+function editUser(data: user) {
+  console.log(data);
+  tempData.value = {
+    id: data.id || '',
+    name: data.name,
+    age: data.age.toString(),
+  };
+  mode.value = 'edit';
+}
+
+function deleteUser(id: string) {
+  $q.dialog({
+    title: '提示',
+    message: '是否確定刪除該資料?',
+    ok: {
+      push: true,
+    },
+    cancel: {
+      push: true,
+      color: 'negative',
+    },
+    persistent: true,
+  })
+    .onOk(() => {
+      handleDeleteUser(id);
+    })
+    .onCancel(() => {
+      // console.log('>>>> Cancel')
+    });
+}
+
+async function handleEditUser() {
+  await api.patch('api/CRUDTest', tempData.value);
+  loadData();
+}
+async function handleDeleteUser(id: string) {
+  await api.delete(`api/CRUDTest/${id}`);
+  loadData();
+}
+async function handleClickOption(btn: btnType, data: user) {
+  btn.status === 'edit' ? editUser(data) : deleteUser(data.id || '');
+}
+
+onMounted(async () => {
+  loadData();
+});
 </script>
 
 <style lang="scss" scoped>
