@@ -60,7 +60,8 @@ module.exports = configure(function (/* ctx */) {
 
       // rebuildCache: true, // rebuilds Vite/linter/etc cache on startup
 
-      // publicPath: '/',
+      publicPath:
+        process.env.NODE_ENV === 'production' ? '/mercuryfire-interview/' : '/',
       // analyze: true,
       env: {
         API: 'https://dahua.metcfire.com.tw/',
